@@ -119,7 +119,6 @@ pre <- extract(FL016, plots_feature,
                    small = TRUE,
                    df = TRUE, 
                    factor = TRUE)
-names(ndvi_FL016)[names(ndvi_FL016) == "FL016"] <- "FL016_ndvi"
 pre <- as.data.frame(pre)
 
 
@@ -127,14 +126,63 @@ post <- extract(FL020, plots_feature,
                     small = TRUE,
                     df = TRUE, 
                     factor = TRUE)
-names(ndvi_FL020)[names(ndvi_FL020) == "FL020"] <- "FL020_ndvi"
 post <- as.data.frame(post)
+
 
 
 plots_feature <- as.data.frame(plots_feature)
 plots_feature$ID <- c(1:23)
 
 all_new <- merge(pre, plots_feature, by = "ID")
+all_new2 <- merge(post, all_new, by = "ID")
 
+FL016 <- subset(all_new2, colnames(all_new2) == c('FL016' , 'plot_num'))
+FL020 <- subset(all_new2, colnames(all_new2) == c('FL020' , 'plot_num'))
 
 boxplot(FL016 ~ plot_num, data = all_new)
+
+
+
+## for loop to create histogram of NDVI values for each plot 
+
+install.packages("reshape")
+library(reshape)
+
+pre2 <-unstack(pre, form = formula(FL016 ~ ID), drop = TRUE)
+
+
+pre3 <- as.data.frame(pre2,row.names = FALSE) ## Error in (function (..., row.names = NULL, check.rows = FALSE, check.names = TRUE,  : 
+                            ##                    arguments imply differing number of rows
+pre3 <- table(pre2, useNA= "ifany")
+
+
+
+for (i in 1:length(pre2)) { # for every column in the "new" data frame
+  x <- pre2[ ,i] # identifying columns (?)
+  # Plot histogram of x
+  jpeg(file = paste("dist", names((pre2)[i]), ".jpeg", sep = ""))
+  hist(x,
+       main = paste("NDVI distribution for P", names((pre2)[i])), #paste name of column to the 
+       xlab = "NDVI",
+       xlim = c(0.2, 0.8),
+       ylim = c(1, 60))
+  dev.off()
+}
+
+
+##### Analyses #####
+lm <- lm(FL016 ~ treatment, data = ___)
+summary(lm)
+
+lm <- lm(FL020 ~ treatment, data = ndvi)
+summary(lm)
+
+ndvi$ndvi_diff <- (ndvi$FL020_ndvi - ndvi$FL016_ndvi)
+lm <- lm(ndvi_diff ~ treatment, data = ndvi)
+summary(lm)
+
+
+
+
+
+
