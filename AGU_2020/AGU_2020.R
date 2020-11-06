@@ -122,6 +122,11 @@ pre <- extract(FL016, plots_feature,
 pre <- as.data.frame(pre)
 
 
+pre2 <- extract(FL016, plots_feature, 
+                df = TRUE, 
+                fun = mean)
+
+
 post <- extract(FL020, plots_feature,
                     small = TRUE,
                     df = TRUE, 
@@ -132,23 +137,28 @@ post <- as.data.frame(post)
 
 plots_feature <- as.data.frame(plots_feature)
 plots_feature$ID <- c(1:23)
+plots = plots_feature %>% select(plot_num, ID)
 
-all_new <- merge(pre, plots_feature, by = "ID")
-all_new2 <- merge(post, all_new, by = "ID")
+FL016 <- merge(pre, plots, by = "ID")
+FL020 <- merge(post, plots, by = "ID")
 
-FL016 <- subset(all_new2, colnames(all_new2) == c('FL016' , 'plot_num'))
-FL020 <- subset(all_new2, colnames(all_new2) == c('FL020' , 'plot_num'))
+write.csv(FL016, "FL016.csv") ## have to manually create dataframe
+write.csv(FL020, "FL020.csv")
 
-boxplot(FL016 ~ plot_num, data = all_new)
+FL016_new <- read.csv("FL016_new.csv")
+FL020_new <- read.csv("FL020_new.csv")
+
+
+boxplot(FL016 ~ plot_num, data = all_new) 
 
 
 
 ## for loop to create histogram of NDVI values for each plot 
 
-install.packages("reshape")
-library(reshape)
+install.packages("reshape") 
+library(reshape) 
 
-pre2 <-unstack(pre, form = formula(FL016 ~ ID), drop = TRUE)
+pre2 <-unstack(pre, form = formula(FL016 ~ ID), drop = TRUE) 
 
 
 pre3 <- as.data.frame(pre2,row.names = FALSE) ## Error in (function (..., row.names = NULL, check.rows = FALSE, check.names = TRUE,  : 
