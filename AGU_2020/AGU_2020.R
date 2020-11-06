@@ -112,8 +112,33 @@ ggplot() +
   ggtitle("Plot Boundaries") + 
   coord_sf()
 
+## extract MEAN ndvi by feature class
+pre_mean<- extract(FL016, plots_feature,
+                      fun = mean,
+                      df = TRUE)
+pre_mean <- merge (pre_mean, plots, by = "ID")
 
-## extrat ndvi by feature class
+post_mean<- extract(FL020, plots_feature,
+                   fun = mean,
+                   df = TRUE)
+post_mean <- merge (post_mean, plots, by = "ID")
+
+treatments <- read.csv("treatments.csv")
+treatments 
+treatments$plot = gsub("P", "", treatments$plot)
+names(treatments)[names(treatments) == "plot"] <- "plot_num"
+
+
+pre_mean <- merge(pre_mean, treatments, by = "plot_num")
+post_mean <- merge(post_mean, treatments, by = "plot_num")
+
+all_mean <- merge(pre_mean, post_mean, by = "plot_num")
+all_mean$ndvi_diff <-  (FL020$all_mean - FL016$all_mean) 
+
+lm_mean <- lm(FL020 ~ treatment, data = post_mean)
+summary(lm_mean)
+
+## extract ALL ndvi by feature class
 
 pre <- extract(FL016, plots_feature,
                    small = TRUE,
@@ -147,6 +172,7 @@ write.csv(FL020, "FL020.csv")
 
 FL016_new <- read.csv("FL016_new.csv")
 FL020_new <- read.csv("FL020_new.csv")
+
 
 
 boxplot(FL016 ~ plot_num, data = all_new) 
