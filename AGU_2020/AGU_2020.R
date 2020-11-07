@@ -119,17 +119,68 @@ all_pt_int$ndvi_diff <- all_pt_int$FL016 - all_pt_int$FL020
 
 
 ## boxplot of before and after NDVI
-plot(FL016 ~ treatment.x, data = all_mean)
+plot(FL016 ~  treatment.x, data = all_mean)
 plot(FL020 ~ treatment.x, data = all_mean)
+
+
+lm(FL016 ~  FL020 + treatment.x, data = all_mean)
 
 
 
 ## bargraph of before and after clipping
 barplot(cbind(FL016, FL020) ~ plot_num, 
         all_mean,
-        beside = TRUE)
+        beside = TRUE,
+        las=2)
 
+CT <- subset(all_mean, treatment.x == "CT")
+SH <- subset(all_mean, treatment.x == "SH")
+GR <- subset(all_mean, treatment.x == "GR")
+GS <- subset(all_mean, treatment.x == "GS")
 
+barplot(cbind(FL016, FL020) ~ plot_num, 
+        CT,
+        beside = TRUE,
+        las=2,
+        col= c("black", "grey"),
+        ylim = c(0,1),
+        xlab = "plots",
+        ylab = "NDVI", 
+        main = "Control plots")
+legend("topright", legend = c("pre-clipping", "post-clipping"), fill = c("black", "grey"))
+
+barplot(cbind(FL016, FL020) ~ plot_num, 
+        SH,
+        beside = TRUE,
+        las=2, 
+        col= c("black", "grey"),
+        ylim = c(0,1), 
+        xlab = "plots",
+        ylab = "NDVI", 
+        main = "Shrub removal plots")
+legend("topright", legend = c("pre-clipping", "post-clipping"), fill = c("black", "grey"))
+
+barplot(cbind(FL016, FL020) ~ plot_num, 
+        GR,
+        beside = TRUE,
+        las=2,
+        col= c("black", "grey"),
+        ylim = c(0,1), 
+        xlab = "plots",
+        ylab = "NDVI", 
+        main = "Grass removal plots")
+legend("topright", legend = c("pre-clipping", "post-clipping"), fill = c("black", "grey"))
+
+barplot(cbind(FL016, FL020) ~ plot_num, 
+        GS,
+        beside = TRUE,
+        las=2,
+        col= c("black", "grey"),
+        ylim = c(0,1), 
+        xlab = "plots",
+        ylab = "NDVI", 
+        main = "Grass and shrub plots") 
+legend("topright", legend = c("pre-clipping", "post-clipping"), fill = c("black", "grey"))
 
 
 ####all_mean %>% 
