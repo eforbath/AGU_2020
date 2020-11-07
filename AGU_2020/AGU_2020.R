@@ -133,7 +133,22 @@ pre_mean <- merge(pre_mean, treatments, by = "plot_num")
 post_mean <- merge(post_mean, treatments, by = "plot_num")
 
 all_mean <- merge(pre_mean, post_mean, by = "plot_num")
-all_mean$ndvi_diff <-  (FL020$all_mean - FL016$all_mean) 
+
+
+## boxplot of before and after NDVI
+plot(FL016 ~ treatment.x, data = all_mean)
+plot(FL020 ~ treatment.x, data = all_mean)
+
+## bargraph of before and after clipping
+barplot(cbind(FL016, FL020) ~ plot_num, 
+        all_mean,
+        beside = TRUE)
+
+
+all_mean$ndvi_diff <- all_mean$FL016 - all_mean$FL020
+
+####all_mean %>% 
+####  mutate(ndvi_diff = FL020 - FL016)
 
 lm_mean <- lm(FL020 ~ treatment, data = post_mean)
 summary(lm_mean)
