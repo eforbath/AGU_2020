@@ -56,42 +56,8 @@ names(percent_cover)[names(percent_cover) == "percent.cover"] <- "percent_cover"
 
 ###### point intercept #####
 pt_int<- na.omit(read.csv("pt_intercept.csv"))
+names(pt_int)[names(pt_int) == "plot"] <- "plot_num"
 
-
-
-
-##### correlation plots #####
-install.packages("ggcorrplot")
-install.packages("GGally")
-install.packages("tidyr")
-
-library(tidyr)
-library(ggcorrplot)
-library(GGally)
-
-
-
-
-veg = plant_comp %>% 
-  dplyr::select(plot:percent_composition) %>% 
-  pivot_wider(names_from = functional_groups, 
-              values_from = percent_composition,
-              values_fill = 0)
-
-veg
-
-names(veg)
-
-
-veg_var = veg %>%
-  dplyr::select(plot, FL016_ndvi, CON:FORB)
-veg_var
-
-
-corr <- round(cor(veg_var), 1)
-corr
-
-ggcorrplot(corr)
 
 
 ##### extracting all values from each plots (distribution of values) ######
@@ -112,16 +78,29 @@ ggplot() +
   ggtitle("Plot Boundaries") + 
   coord_sf()
 
-## extract MEAN ndvi by feature class
+
+
+
+
+###### extract MEAN ndvi by feature class ######
 pre_mean<- extract(FL016, plots_feature,
                       fun = mean,
                       df = TRUE)
-pre_mean <- merge (pre_mean, plots, by = "ID")
+
 
 post_mean<- extract(FL020, plots_feature,
                    fun = mean,
                    df = TRUE)
+
+
+plots_feature <- as.data.frame(plots_feature)
+plots_feature$ID <- c(1:23)
+plots = plots_feature %>% select(plot_num, ID)
+
+
+pre_mean <- merge (pre_mean, plots, by = "ID")
 post_mean <- merge (post_mean, plots, by = "ID")
+
 
 treatments <- read.csv("treatments.csv")
 treatments 
@@ -133,11 +112,17 @@ pre_mean <- merge(pre_mean, treatments, by = "plot_num")
 post_mean <- merge(post_mean, treatments, by = "plot_num")
 
 all_mean <- merge(pre_mean, post_mean, by = "plot_num")
+all_pt_int <-merge(all_mean, pt_int, by = "plot_num")
+
+all_pt_int$ndvi_diff <- all_pt_int$FL016 - all_pt_int$FL020
+
 
 
 ## boxplot of before and after NDVI
 plot(FL016 ~ treatment.x, data = all_mean)
 plot(FL020 ~ treatment.x, data = all_mean)
+
+
 
 ## bargraph of before and after clipping
 barplot(cbind(FL016, FL020) ~ plot_num, 
@@ -145,7 +130,7 @@ barplot(cbind(FL016, FL020) ~ plot_num,
         beside = TRUE)
 
 
-all_mean$ndvi_diff <- all_mean$FL016 - all_mean$FL020
+
 
 ####all_mean %>% 
 ####  mutate(ndvi_diff = FL020 - FL016)
@@ -153,7 +138,42 @@ all_mean$ndvi_diff <- all_mean$FL016 - all_mean$FL020
 lm_mean <- lm(FL020 ~ treatment, data = post_mean)
 summary(lm_mean)
 
-## extract ALL ndvi by feature class
+
+##### correlation plots #####
+install.packages("ggcorrplot")
+install.packages("GGally")
+install.packages("tidyr")
+
+library(tidyr)
+library(ggcorrplot)
+library(GGally)
+
+
+
+
+veg = pt_int %>% 
+  dplyr::select(plot_num:percent_composition) %>% 
+  pivot_wider(names_from = functional_groups, 
+              values_from = percent_composition,
+              values_fill = 0)
+
+veg
+
+names(veg)
+
+
+veg_var = veg %>%
+  dplyr::select(plot, FL016_ndvi, CON:FORB)
+veg_var
+
+
+corr <- round(cor(veg_var), 1)
+corr
+
+ggcorrplot(corr)
+
+
+##### extract ALL ndvi by feature class ####
 
 pre <- extract(FL016, plots_feature,
                    small = TRUE,
@@ -175,9 +195,7 @@ post <- as.data.frame(post)
 
 
 
-plots_feature <- as.data.frame(plots_feature)
-plots_feature$ID <- c(1:23)
-plots = plots_feature %>% select(plot_num, ID)
+
 
 FL016 <- merge(pre, plots, by = "ID")
 FL020 <- merge(post, plots, by = "ID")
