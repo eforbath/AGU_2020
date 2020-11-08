@@ -233,11 +233,6 @@ pre <- extract(FL016, plots_feature,
 pre <- as.data.frame(pre)
 
 
-pre2 <- extract(FL016, plots_feature, 
-                df = TRUE, 
-                fun = mean)
-
-
 post <- extract(FL020, plots_feature,
                     small = TRUE,
                     df = TRUE, 
@@ -246,10 +241,13 @@ post <- as.data.frame(post)
 
 
 
-
-
 FL016 <- merge(pre, plots, by = "ID")
 FL020 <- merge(post, plots, by = "ID")
+
+hist(subset(FL016$FL016, FL016$plot_num == "102"))
+hist(subset(FL016$FL016, FL016$plot_num == "103"))
+
+
 
 write.csv(FL016, "FL016.csv") ## have to manually create dataframe
 write.csv(FL020, "FL020.csv")
