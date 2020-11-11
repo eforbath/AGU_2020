@@ -119,12 +119,36 @@ all_pt_int$ndvi_diff <- all_pt_int$FL016 - all_pt_int$FL020
 
 
 ## boxplot of before and after NDVI
-plot(FL016 ~  treatment.x, data = all_mean)
+plot(FL016~  treatment.x, data = all_mean)
 plot(FL020 ~ treatment.x, data = all_mean)
 
+barplot(cbind(FL016, FL020) ~  treatment.x, data = all_mean)
 
-lm(FL016 ~  FL020 + treatment.x, data = all_mean)
+## add error bars on barplot
+data_sum <- ddply(all_mean, c("treatment.x"), summarise,
+               N    = length(FL016),
+               mean = mean(FL016),
+               sd   = sd(FL016),
+               se   = sd / sqrt(N)
+) 
 
+install.packages("doBy")
+library(doBy)
+
+sum <- summaryBy(FL016 + FL020 ~ treatment.x, 
+                   data=all_mean, 
+                   FUN=c(length,mean,sd))
+
+ggplot(sum, aes(x=treatment.x, y=FL016.mean, colour=FL016.mean)) + 
+  geom_bar(position=position_dodge(), stat="identity") +
+  geom_errorbar(aes(ymin=FL016.mean-FL016.sd, ymax=FL016.mean+FL016.sd), width=.1) +
+  geom_line() +
+  geom_point()
+
+
+
+aov <- aov(FL016 ~  FL020 + treatment.x, data = all_mean)
+summary(aov)
 
 
 ## bargraph of before and after clipping
@@ -133,7 +157,7 @@ barplot(cbind(FL016, FL020) ~ plot_num,
         beside = TRUE,
         las=2)
 
-CT <- subset(all_mean, treatment.x == "CT")
+CT <- subset(all_mean, treatment.x == "CT") 
 SH <- subset(all_mean, treatment.x == "SH")
 GR <- subset(all_mean, treatment.x == "GR")
 GS <- subset(all_mean, treatment.x == "GS")
@@ -183,6 +207,21 @@ barplot(cbind(FL016, FL020) ~ plot_num,
 legend("topright", legend = c("pre-clipping", "post-clipping"), fill = c("black", "grey"))
 
 
+##### ANOVAs #####
+aov_ct <- aov(FL016 ~  FL020, data = CT)
+summary(aov_ct)
+
+aov_gr <- aov(FL016 ~  FL020, data = GR)
+summary(aov_gr)
+
+aov_sh <- aov(FL016 ~  FL020, data = SH)
+summary(aov_sh)
+
+aov_gs <- aov(FL016 ~  FL020, data = GS)
+summary(aov_gs)
+
+
+
 ####all_mean %>% 
 ####  mutate(ndvi_diff = FL020 - FL016)
 
@@ -225,6 +264,10 @@ ggcorrplot(corr)
 
 
 ##### extract ALL ndvi by feature class ####
+plots_feature <- st_read("plots_feature2/plots_feature2.shp")
+
+
+st_geometry_type(plots_feature)
 
 pre <- extract(FL016, plots_feature,
                    small = TRUE,
