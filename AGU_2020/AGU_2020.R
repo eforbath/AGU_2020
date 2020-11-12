@@ -38,10 +38,10 @@ library(lsmeans)
 library(DHARMa)
 
 ##### raster of site #####
-FL016 <- raster("CYN_TR1_FL016M/FL016.tif")  
+FL016 <- raster("georef_rasters/FL016_georef.tif")  
 FL016
 
-FL020 <- raster("CYN_TR1_FL020M/FL020.tif")
+FL020 <- raster("georef_rasters/FL020_goeref.tif")
 FL020
 
 ##### percent cover ######
@@ -66,7 +66,7 @@ detach("package:tidyr", unload = TRUE) # extract wont ork with tidyr
 
 library(sf)
 
-plots_feature <- st_read("plots_feature2/plots_feature2.shp")
+plots_feature <- st_read("plots/plots.shp")
 
 
 st_geometry_type(plots_feature)
@@ -80,17 +80,21 @@ ggplot() +
 
 
 
+plot(plots_feature, add = TRUE)
+
 
 
 ###### extract MEAN ndvi by feature class ######
 pre_mean<- extract(FL016, plots_feature,
                       fun = mean,
                       df = TRUE)
+names(pre_mean)[names(pre_mean) == "FL016_georef"] <- "FL016"
 
 
 post_mean<- extract(FL020, plots_feature,
                    fun = mean,
                    df = TRUE)
+names(post_mean)[names(post_mean) == "FL020_goeref"] <- "FL020"
 
 
 plots_feature <- as.data.frame(plots_feature)
@@ -117,12 +121,20 @@ all_pt_int <-merge(all_mean, pt_int, by = "plot_num")
 all_pt_int$ndvi_diff <- all_pt_int$FL016 - all_pt_int$FL020
 
 
-
 ## boxplot of before and after NDVI
-plot(FL016~  treatment.x, data = all_mean)
-plot(FL020 ~ treatment.x, data = all_mean)
+plot(FL016 ~  treatment.x, 
+     data = all_mean, 
+     xlab = "treatment", 
+     ylab = "NDVI", 
+     main = "Pre-clipping NDVI (per treatment)")
+plot(FL020 ~ treatment.x, 
+     data = all_mean,
+     xlab = "treatment", 
+     ylab = "NDVI", 
+     main = "Post-clipping NDVI (per treatment)")
 
 barplot(cbind(FL016, FL020) ~  treatment.x, data = all_mean)
+
 
 ## add error bars on barplot
 data_sum <- ddply(all_mean, c("treatment.x"), summarise,
@@ -143,8 +155,19 @@ ggplot(sum, aes(x=treatment.x, y=FL016.mean, colour=FL016.mean)) +
   geom_bar(position=position_dodge(), stat="identity") +
   geom_errorbar(aes(ymin=FL016.mean-FL016.sd, ymax=FL016.mean+FL016.sd), width=.1) +
   geom_line() +
-  geom_point()
+  geom_point()+
+  xlab("treatment") +
+  ylab("NDVI")+
+  ggtitle("Pre-clipping NDVI")
 
+ggplot(sum, aes(x=treatment.x, y=FL020.mean, colour=FL016.mean)) + 
+  geom_bar(position=position_dodge(), stat="identity") +
+  geom_errorbar(aes(ymin=FL020.mean-FL020.sd, ymax=FL020.mean+FL020.sd), width=.1) +
+  geom_line() +
+  geom_point() + 
+  xlab("treatment") +
+  ylab("NDVI")+
+  ggtitle("Post-clipping NDVI")
 
 
 aov <- aov(FL016 ~  FL020 + treatment.x, data = all_mean)
