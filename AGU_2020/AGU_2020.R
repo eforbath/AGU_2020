@@ -437,7 +437,6 @@ abline(lm)
 
 
 
-
 lm <- lm(FL016~ percent_composition, data = forb)
 summary(lm)
 
@@ -495,21 +494,9 @@ for (i in 1:length(FL016_new)) { # for every column in the "new" data frame
        main = paste("NDVI distribution for P", names((FL016_new)[i])), #paste name of column to the 
        xlab = "NDVI",
        xlim = c(0.2, 0.8),
-       ylim = c(1, 60))
+       ylim = c(1, 110))
   dev.off()
 }
-
-
-##### Analyses #####
-lm <- lm(FL016 ~ treatment, data = ___)
-summary(lm)
-
-lm <- lm(FL020 ~ treatment, data = ndvi)
-summary(lm)
-
-ndvi$ndvi_diff <- (ndvi$FL020_ndvi - ndvi$FL016_ndvi)
-lm <- lm(ndvi_diff ~ treatment, data = ndvi)
-summary(lm)
 
 
 
