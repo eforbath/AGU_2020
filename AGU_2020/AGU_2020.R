@@ -80,7 +80,6 @@ ggplot() +
 
 
 
-plot(plots_feature, add = TRUE)
 
 
 
@@ -160,8 +159,8 @@ ggplot(sum, aes(x=treatment.x, y=FL016.mean, colour=FL016.mean)) +
   ylab("NDVI")+
   ggtitle("Pre-clipping NDVI")
 
-ggplot(sum, aes(x=treatment.x, y=FL020.mean, colour=FL016.mean)) + 
-  geom_bar(position=position_dodge(), stat="identity") +
+ggplot(sum, aes(x=treatment.x, y=FL020.mean, colour=FL020.mean)) + 
+  geom_bar(position="dodge", stat="identity") +
   geom_errorbar(aes(ymin=FL020.mean-FL020.sd, ymax=FL020.mean+FL020.sd), width=.1) +
   geom_line() +
   geom_point() + 
@@ -170,16 +169,42 @@ ggplot(sum, aes(x=treatment.x, y=FL020.mean, colour=FL016.mean)) +
   ggtitle("Post-clipping NDVI")
 
 
+
+##### creating bar plots side by side #####
+library(reshape2)
+all_mean2 <- subset(all_mean, select= -c(ID.y, ID.x, treatment.y, plot_num))
+df <- melt(all_mean2, id.vars='treatment.x')
+
+cdata <- ddply(df, c("treatment.x", "variable"), summarise,
+               N    = length(value),
+               mean = mean(value),
+               sd   = sd(value),
+               se   = sd / sqrt(N)
+               )
+
+ggplot(cdata, aes(x=treatment.x, y=mean, fill=variable)) + 
+  geom_bar(position=position_dodge(), stat="identity") +
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se),
+                width=.2,                    # Width of the error bars
+                position=position_dodge(.9)) +
+  xlab("treatment") +
+  ylab("NDVI")+
+  ggtitle("NDVI pre- and post- clipping") +
+  scale_fill_hue(name="Variable", # Legend label, use darker colors
+                 breaks=c("FL016", "FL020"),
+                 labels=c("Pre-Clipping", "Post-Clipping"))
+  
+
+
 aov <- aov(FL016 ~  FL020 + treatment.x, data = all_mean)
 summary(aov)
 
+aov <- aov(FL020 ~ treatment.x, data = all_mean)
+summary(aov)
 
-## bargraph of before and after clipping
-barplot(cbind(FL016, FL020) ~ plot_num, 
-        all_mean,
-        beside = TRUE,
-        las=2)
 
+##### subset for all treatments ####
+all_mean$ndvi_diff <- all_mean$FL016 - all_mean$FL020
 CT <- subset(all_mean, treatment.x == "CT") 
 SH <- subset(all_mean, treatment.x == "SH")
 GR <- subset(all_mean, treatment.x == "GR")
@@ -230,6 +255,17 @@ barplot(cbind(FL016, FL020) ~ plot_num,
 legend("topright", legend = c("pre-clipping", "post-clipping"), fill = c("black", "grey"))
 
 
+##### plot of NDVI difference across treatments #####
+barplot(ndvi_diff ~ plot_num, 
+        CT)
+barplot(ndvi_diff ~ plot_num, 
+        GR) 
+barplot(ndvi_diff ~ plot_num, 
+        SH) 
+barplot(ndvi_diff ~ plot_num, 
+        GS) 
+
+
 ##### ANOVAs #####
 aov_ct <- aov(FL016 ~  FL020, data = CT)
 summary(aov_ct)
@@ -245,12 +281,6 @@ summary(aov_gs)
 
 
 
-####all_mean %>% 
-####  mutate(ndvi_diff = FL020 - FL016)
-
-lm_mean <- lm(FL020 ~ treatment, data = post_mean)
-summary(lm_mean)
-
 
 ##### correlation plots #####
 install.packages("ggcorrplot")
@@ -264,7 +294,7 @@ library(GGally)
 
 
 
-veg = pt_int %>% 
+veg = all_pt_int %>% 
   dplyr::select(plot_num:percent_composition) %>% 
   pivot_wider(names_from = functional_groups, 
               values_from = percent_composition,
@@ -276,26 +306,40 @@ names(veg)
 
 
 veg_var = veg %>%
-  dplyr::select(plot, FL016_ndvi, CON:FORB)
+  dplyr::select(plot_num, FL016, CON:FORB)
 veg_var
-
 
 corr <- round(cor(veg_var), 1)
 corr
 
 ggcorrplot(corr)
 
+veg_var2 = veg %>%
+  dplyr::select(plot_num, FL020, CON:FORB)
+veg_var2
+
+corr2 <- round(cor(veg_var2), 1)
+corr2
+
+ggcorrplot(corr2)
+
 
 ##### extract ALL ndvi by feature class ####
-plots_feature <- st_read("plots_feature2/plots_feature2.shp")
+detach("package:tidyr", unload = TRUE) # extract wont ork with tidyr
+library(sf)
+
+plots_feature <- st_read("plots/plots.shp")
 
 
 st_geometry_type(plots_feature)
 
+plots_feature
+
+
 pre <- extract(FL016, plots_feature,
-                   small = TRUE,
-                   df = TRUE, 
-                   factor = TRUE)
+               fun = NULL,
+                   small = FALSE,
+                   df = TRUE)
 pre <- as.data.frame(pre)
 
 
@@ -326,27 +370,129 @@ FL020_new <- read.csv("FL020_new.csv")
 boxplot(FL016 ~ plot_num, data = all_new) 
 
 
+#####  subset by functional type #####
+con <- subset(all_pt_int, functional_groups == "CON")
+evsh <- subset(all_pt_int, functional_groups == "EVSH")
+desh <- subset(all_pt_int, functional_groups == "DESH")
+gram <- subset(all_pt_int, functional_groups == "GRAM")
+forb <- subset(all_pt_int, functional_groups == "FORB")
+cwd <- subset(all_pt_int, functional_groups == "CWD")
+moss <- subset(all_pt_int, functional_groups == "MOSS")
+lichen <- subset(all_pt_int, functional_groups == "LICH")
+brg <- subset(all_pt_int, functional_groups == "BRG")
+litr <- subset(all_pt_int, functional_groups == "LITR")
+equ <- subset(all_pt_int, functional_groups == "EQU")
+
+
+lm <- lm(FL016 ~ percent_composition, data = con)
+summary(lm)
+
+plot(FL016 ~ percent_composition, 
+     data = con,
+     main = "NDVI vs Percent Cover (Conifers)",
+     xlab = "Percent Cover", 
+     ylab = "NDVI (pre-clipping)",
+     pch = 19, 
+     col = "darkgreen")
+abline(lm)
+
+lm <- lm(FL016 ~ percent_composition, data = evsh)
+summary(lm)
+
+plot(FL016 ~ percent_composition, 
+     data = evsh,
+     main = "NDVI vs Percent Cover (Evergreen Shrub)",
+     xlab = "Percent Cover", 
+     ylab = "NDVI (pre-clipping)",
+     pch = 19, 
+     col = "darkgreen")
+abline(lm)
+
+
+lm <- lm(FL016 ~ percent_composition, data = desh)
+summary(lm)
+
+plot(FL016 ~ percent_composition, 
+     data = desh,
+     main = "NDVI vs Percent Cover (Deciduous Shrub)",
+     xlab = "Percent Cover", 
+     ylab = "NDVI (pre-clipping)",
+     pch = 19, 
+     col = "darkgreen")
+abline(lm)
+
+
+
+lm <- lm(FL016 ~ percent_composition, data = gram)
+summary(lm)
+
+plot(FL016 ~ percent_composition, 
+     data = gram,
+     main = "NDVI vs Percent Cover (Graminoid)",
+     xlab = "Percent Cover", 
+     ylab = "NDVI (pre-clipping)",
+     pch = 19, 
+     col = "darkgreen")
+abline(lm)
+
+
+
+
+lm <- lm(FL016~ percent_composition, data = forb)
+summary(lm)
+
+plot(FL016 ~ percent_composition, 
+     data = forb,
+     main = "NDVI vs Percent Cover (Forb)",
+     xlab = "Percent Cover", 
+     ylab = "NDVI (pre-clipping)",
+     pch = 19, 
+     col = "darkgreen")
+abline(lm)
+
+
+
+lm <- lm(FL016 ~ percent_composition, data = cwd)
+summary(lm)
+
+plot(FL016 ~ percent_composition, 
+     data = cwd,
+     main = "NDVI vs Percent Cover (CWD)",
+     xlab = "Percent Cover", 
+     ylab = "NDVI (pre-clipping)",
+     pch = 19, 
+     col = "darkgreen")
+abline(lm)
+
+
+
+lm <- lm(FL016 ~ percent_composition, data = lichen)
+summary(lm)
+
+plot(FL016 ~ percent_composition, 
+     data = lichen,
+     main = "NDVI vs Percent Cover (Lichen)",
+     xlab = "Percent Cover", 
+     ylab = "NDVI (pre-clipping)",
+     pch = 19, 
+     col = "darkgreen")
+abline(lm)
+
+
 
 ## for loop to create histogram of NDVI values for each plot 
 
 install.packages("reshape") 
 library(reshape) 
 
-pre2 <-unstack(pre, form = formula(FL016 ~ ID), drop = TRUE) 
 
 
-pre3 <- as.data.frame(pre2,row.names = FALSE) ## Error in (function (..., row.names = NULL, check.rows = FALSE, check.names = TRUE,  : 
-                            ##                    arguments imply differing number of rows
-pre3 <- table(pre2, useNA= "ifany")
-
-
-
-for (i in 1:length(pre2)) { # for every column in the "new" data frame
-  x <- pre2[ ,i] # identifying columns (?)
+for (i in 1:length(FL016_new)) { # for every column in the "new" data frame
+  x <- FL016_new[ ,i] # identifying columns (?)
   # Plot histogram of x
-  jpeg(file = paste("dist", names((pre2)[i]), ".jpeg", sep = ""))
+  jpeg(file = paste("dist", names((FL016_new)[i]), ".jpeg", sep = ""))
   hist(x,
-       main = paste("NDVI distribution for P", names((pre2)[i])), #paste name of column to the 
+       main = paste("NDVI distribution for P", names((FL016_new)[i])), #paste name of column to the 
        xlab = "NDVI",
        xlim = c(0.2, 0.8),
        ylim = c(1, 60))
