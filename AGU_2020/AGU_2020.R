@@ -135,7 +135,10 @@ plot(FL020 ~ treatment.x,
 barplot(cbind(FL016, FL020) ~  treatment.x, data = all_mean)
 
 
-## add error bars on barplot
+##### add error bars on barplot #####
+install.packages("plyr")
+library(plyr)
+
 data_sum <- ddply(all_mean, c("treatment.x"), summarise,
                N    = length(FL016),
                mean = mean(FL016),
@@ -204,7 +207,7 @@ summary(aov)
 
 
 ##### subset for all treatments ####
-all_mean$ndvi_diff <- all_mean$FL016 - all_mean$FL020
+all_mean$ndvi_diff <- all_mean$FL020 - all_mean$FL016
 CT <- subset(all_mean, treatment.x == "CT") 
 SH <- subset(all_mean, treatment.x == "SH")
 GR <- subset(all_mean, treatment.x == "GR")
@@ -367,8 +370,68 @@ FL020_new <- read.csv("FL020_new.csv")
 
 
 
-boxplot(FL016 ~ plot_num, data = all_new) 
 
+########### biomass removal vs ndvi difference #######
+
+bio_removal <- na.omit(read.csv("CYN_bio_removal.csv"))
+names(bio_removal)[names(bio_removal) == "Plot.ID"] <- "plot_num"
+bio_removal2 <- aggregate(bio_removal$BIOMASS..g., by = list(plot=bio_removal$plot_num), FUN = sum)
+names(bio_removal2)[names(bio_removal2) == "x"] <- "bio_removed"
+names(bio_removal2)[names(bio_removal2) == "plot"] <- "plot_num"
+
+ndvi_br <- na.omit(merge(all_mean, bio_removal2, by = c("plot_num"), all.x = TRUE, all.y = TRUE)) 
+
+barplot(bio_removed ~ plot_num, data = ndvi_br,
+        main = "Biomass Removed by Plot",
+        xlab = "Plot", 
+        ylab = "Biomass Removed (g)", 
+        ylim = c(0,600), 
+        col = "lightgreen")
+lm <- lm(bio_removed ~ ndvi_diff, data = ndvi_br)
+summary(lm)
+
+plot(bio_removed ~ ndvi_diff, data = ndvi_br, 
+     xlab = "NDVI Difference", 
+     ylab = "Biomass Removed (g)", 
+     main = "Biomass Removed vs NDVI",
+     pch = 19, 
+     col = "red")
+abline(lm)
+
+##### biomass removal by treatment ######
+GR <- subset(ndvi_br, treatment.x == "GR")
+SH <- subset(ndvi_br, treatment.x == "SH")
+GS <- subset(ndvi_br, treatment.x == "GS")
+
+lm<- lm(bio_removed ~ ndvi_diff, data = GR)
+summary(lm)
+
+lm<- lm(bio_removed ~ ndvi_diff, data = SH)
+summary(lm)
+
+lm<- lm(bio_removed ~ ndvi_diff, data = GS)
+summary(lm)
+
+## plot of biomass removed vs ndvi by treatmend (colored) ##
+plot(bio_removed ~ ndvi_diff, 
+     data = GR,
+     xlim = c(-0.2, 0.2),
+     ylim = c(0, 500),
+     xlab = "NDVI Difference", 
+     ylab = "Biomass Removed (g)", 
+     main = "NDVI Difference vs Biomass Removed", 
+     pch = 19, 
+     col = "green")
+points(bio_removed ~ ndvi_diff, 
+       data = SH, 
+       pch = 19, 
+       col = "red")
+points(bio_removed ~ ndvi_diff, 
+       data = GS, 
+       pch = 19, 
+       col = "purple")
+legend("topleft", c("grass removed", "shrub removed", "grass & shrub removed"),
+       fill = c("green", "red", "purple"))
 
 #####  subset by functional type #####
 con <- subset(all_pt_int, functional_groups == "CON")
