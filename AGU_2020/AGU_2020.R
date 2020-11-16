@@ -44,6 +44,46 @@ FL016
 FL020 <- raster("georef_rasters/FL020_goeref.tif")
 FL020
 
+FL020_crop <- crop(FL020, FL016)
+FL020b<- resample(FL020_crop, FL016)
+diff <- FL020 - FL016
+
+RGB <- stack("RU_CYN_TR1_FL016_RGB.tif")
+RGB
+
+plot(FL016)
+plot(FL020)
+
+GPS <- na.omit(read.csv("CYN_plot_centers.csv"))
+GPS2 <- subset(GPS, select= -c(plot, elevation))
+
+## re order columns so longitude is first
+GPS_order <- GPS2[,c("longitude", "latitude")]
+
+## turn into spatial points
+GPS_order2 <- SpatialPoints(GPS_order,
+                            proj4string = CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"))
+CRS.new <- CRS("+proj=aea +lat_1=50 +lat_2=70 +lat_0=56 +lon_0=100 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs +ellps=WGS84 +towgs84=0,0,0")
+GPS_final<- spTransform(GPS_order2, CRS.new)
+
+
+plot(FL016, 
+     main = "Pre-Clipping NDVI", 
+     xlab = "Longitude", 
+     ylab = "Latitude")
+points(GPS_final$longitude, GPS_final$latitude, pch=21,
+       bg = "black", col = "yellow")
+
+
+plot(FL020, 
+     main = "Post-Clipping NDVI", 
+     xlab = "Longitude", 
+     ylab = "Latitude")
+points(GPS_final$longitude, GPS_final$latitude, pch=21,
+       bg = "black", col = "yellow")
+
+
+
 ##### percent cover ######
 percent_cover <- na.omit(read.csv("percent_cover.csv"))
 names(percent_cover)[names(percent_cover) == "Plot.ID"] <- "plot"
@@ -74,12 +114,16 @@ st_geometry_type(plots_feature)
 plots_feature
 
 ggplot() + 
-  geom_sf(data = plots_feature, size = 3, color = "black", fill = "cyan1") + 
+  geom_sf(data = plots_feature, size = 1, color = "black", fill = "cyan1") + 
   ggtitle("Plot Boundaries") + 
   coord_sf()
 
 
+plot(RGB)
 
+plotRGB(RGB, r = 1, g = 2, b = 3)
+plot(plots_feature, add = TRUE, zoom = 4)
+zm()
 
 
 
@@ -132,19 +176,12 @@ plot(FL020 ~ treatment.x,
      ylab = "NDVI", 
      main = "Post-clipping NDVI (per treatment)")
 
-barplot(cbind(FL016, FL020) ~  treatment.x, data = all_mean)
 
 
 ##### add error bars on barplot #####
 install.packages("plyr")
 library(plyr)
 
-data_sum <- ddply(all_mean, c("treatment.x"), summarise,
-               N    = length(FL016),
-               mean = mean(FL016),
-               sd   = sd(FL016),
-               se   = sd / sqrt(N)
-) 
 
 install.packages("doBy")
 library(doBy)
@@ -185,6 +222,7 @@ cdata <- ddply(df, c("treatment.x", "variable"), summarise,
                se   = sd / sqrt(N)
                )
 
+####### BARGRAPH #####
 ggplot(cdata, aes(x=treatment.x, y=mean, fill=variable)) + 
   geom_bar(position=position_dodge(), stat="identity") +
   geom_errorbar(aes(ymin=mean-se, ymax=mean+se),
@@ -197,13 +235,27 @@ ggplot(cdata, aes(x=treatment.x, y=mean, fill=variable)) +
                  breaks=c("FL016", "FL020"),
                  labels=c("Pre-Clipping", "Post-Clipping"))
   
-
+##### BOXPLOT #####
+ggplot(df, aes(x=treatment.x, y=value, fill=variable)) + 
+  geom_boxplot() +
+  xlab("treatment") +
+  ylab("NDVI")+
+  ggtitle("NDVI pre- and post- clipping") +
+  scale_fill_hue(name="Variable", # Legend label, use darker colors
+                 breaks=c("FL016", "FL020"),
+                 labels=c("Pre-Clipping", "Post-Clipping"))
 
 aov <- aov(FL016 ~  FL020 + treatment.x, data = all_mean)
 summary(aov)
+aov
 
-aov <- aov(FL020 ~ treatment.x, data = all_mean)
+aov <- aov(FL016 ~ treatment.x, data = all_mean) ##not different
 summary(aov)
+TukeyHSD(aov)
+
+aov <- aov(FL020 ~ treatment.x, data = all_mean) ## some different
+summary(aov)
+TukeyHSD(aov)
 
 
 ##### subset for all treatments ####
@@ -270,17 +322,18 @@ barplot(ndvi_diff ~ plot_num,
 
 
 ##### ANOVAs #####
-aov_ct <- aov(FL016 ~  FL020, data = CT)
+aov_ct <- aov(FL016 ~  FL020, data = CT) ## no sign diff (p=0.406)
 summary(aov_ct)
 
-aov_gr <- aov(FL016 ~  FL020, data = GR)
+aov_gr <- aov(FL016 ~  FL020, data = GR) ## sif diff!!! (p=0.0245)
 summary(aov_gr)
 
-aov_sh <- aov(FL016 ~  FL020, data = SH)
+aov_sh <- aov(FL016 ~  FL020, data = SH) ## no sig diff (p=0.129)
 summary(aov_sh)
 
-aov_gs <- aov(FL016 ~  FL020, data = GS)
+aov_gs <- aov(FL016 ~  FL020, data = GS) ## no sig diff (p=0.181)
 summary(aov_gs)
+
 
 
 
@@ -390,6 +443,41 @@ barplot(bio_removed ~ plot_num, data = ndvi_br,
 lm <- lm(bio_removed ~ ndvi_diff, data = ndvi_br)
 summary(lm)
 
+
+aov <- aov(bio_removed ~ ndvi_diff + treatment.x, data = ndvi_br)
+summary(aov)
+
+ttest <- t.test(ndvi_br$ndvi_diff, ndvi_br$treatment.x)
+summary(aov)
+
+##### create box plot for ndvi diff #####
+install.packages("ggpubr")
+library(ggpubr)
+
+
+cdata2 <- ddply(ndvi_br, c("treatment.x"), summarise,
+               N    = length(ndvi_diff),
+               mean = mean(ndvi_diff),
+               sd   = sd(ndvi_diff),
+               se   = sd / sqrt(N)
+)
+
+
+ggplot(ndvi_br, aes(x=treatment.x, y=ndvi_diff, fill=treatment.x)) + 
+  geom_boxplot() +
+  scale_x_discrete(labels= c("Grass", "Grass + Shrub", "Shrub")) + 
+  xlab("Treatment") +
+  ylab("NDVI Difference")+
+  ggtitle("") +
+  scale_fill_hue(name="Treatments", # Legend label, use darker colors
+                 breaks=c(),
+                 labels=c())
+
+ttest <- t.test(treatment.x ~ ndvi_diff, data = ndvi_br)
+
+
+
+##### scatter plot (need this?) #####
 plot(bio_removed ~ ndvi_diff, data = ndvi_br, 
      xlab = "NDVI Difference", 
      ylab = "Biomass Removed (g)", 
@@ -406,8 +494,10 @@ GS <- subset(ndvi_br, treatment.x == "GS")
 lm<- lm(bio_removed ~ ndvi_diff, data = GR)
 summary(lm)
 
+
 lm<- lm(bio_removed ~ ndvi_diff, data = SH)
 summary(lm)
+
 
 lm<- lm(bio_removed ~ ndvi_diff, data = GS)
 summary(lm)
