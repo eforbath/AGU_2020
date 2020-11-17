@@ -718,7 +718,7 @@ post_mean2 <- merge(post_mean2, treatments, by = "plot_num")
 all_mean_b <- merge(pre_mean2, post_mean2, by = "plot_num")
 all_pt_int2 <-merge(all_mean_b, pt_int, by = "plot_num")
 
-all_pt_int2$ndvi_diff <- all_pt_int2$FL016 - all_pt_int2$FL020
+all_pt_int2$ndvi_diff <- all_pt_int2$FL020 - all_pt_int2$FL016
 
 ###### box plot #####
 library(reshape2)
@@ -746,14 +746,40 @@ ggplot(df2, aes(x=treatment.x, y=value, fill=variable)) +
                     labels=c("Pre-Clipping", "Post-Clipping")) 
 
 
-aov <- aov(value ~  variable + treatment.x, data = df)
-summary(aov)
-aov
-
 install.packages("nlme")
 library(nlme)
+install.packages("lme4")
+library(lme4)
 
-lme = lme(value ~ variable+treatment.x, data = df2)
+
+lme = lme(value ~ variable + treatment.x, data = df2, 
+          random = ~1|variable)
+summary(lme)
+
+
+##### boxoplt for NDVI diff #####
+cdata2 <- ddply(all_pt_int2, c("treatment.x"), summarise,
+                N    = length(ndvi_diff),
+                mean = mean(ndvi_diff),
+                sd   = sd(ndvi_diff),
+                se   = sd / sqrt(N)
+)
+
+
+ggplot(all_pt_int2, aes(x=treatment.x, y=ndvi_diff)) + 
+  geom_boxplot(fill = "white", color = "black") +
+  scale_x_discrete(labels= c("Control", "Grass", "Grass + Shrub", "Shrub")) + 
+  xlab("Treatment") +
+  ylab("NDVI Difference")+
+  ggtitle("") +
+  geom_point()
+
+subset <- subset(all_pt_int2, treatment.x == "GR"|treatment.x == "GS"|treatment.x == "SH" )
+
+aov <- aov(ndvi_diff ~ treatment.x, data = subset)
+summary(aov)
+TukeyHSD(aov)
+
 
 
 
