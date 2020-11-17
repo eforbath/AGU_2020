@@ -238,12 +238,14 @@ ggplot(cdata, aes(x=treatment.x, y=mean, fill=variable)) +
 ##### BOXPLOT #####
 ggplot(df, aes(x=treatment.x, y=value, fill=variable)) + 
   geom_boxplot() +
-  xlab("treatment") +
+  xlab("Treatment") +
   ylab("NDVI")+
+  scale_x_discrete(labels= c("Control", "Grass", "Grass + Shrub", "Shrub")) + 
   ggtitle("NDVI pre- and post- clipping") +
-  scale_fill_hue(name="Variable", # Legend label, use darker colors
+  scale_fill_manual(values=c("#CC6666", "#9999CC"),
+                 name="Variable", # Legend label, use darker colors
                  breaks=c("FL016", "FL020"),
-                 labels=c("Pre-Clipping", "Post-Clipping"))
+                 labels=c("Pre-Clipping", "Post-Clipping")) 
 
 aov <- aov(FL016 ~  FL020 + treatment.x, data = all_mean)
 summary(aov)
@@ -469,12 +471,15 @@ ggplot(ndvi_br, aes(x=treatment.x, y=ndvi_diff, fill=treatment.x)) +
   xlab("Treatment") +
   ylab("NDVI Difference")+
   ggtitle("") +
-  scale_fill_hue(name="Treatments", # Legend label, use darker colors
-                 breaks=c(),
-                 labels=c())
+  scale_fill_manual(values=c("#CC6666", "#9999CC", "#66CC99"),
+                    name="Treatmeents", # Legend label, use darker colors
+                    breaks=c(),
+                    labels=c())
+   
 
-ttest <- t.test(treatment.x ~ ndvi_diff, data = ndvi_br)
-
+aov <- aov(ndvi_diff ~ treatment.x, data = ndvi_br)
+summary(aov)
+TukeyHSD(aov)
 
 
 ##### scatter plot (need this?) #####
