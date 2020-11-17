@@ -663,6 +663,44 @@ for (i in 1:length(FL016_new)) { # for every column in the "new" data frame
 }
 
 
+##### NORMALIZING NDVI MAPS #####
+norm <- FL016 - 0.15
+plot(norm)
+
+
+pre_mean2<- extract(norm, plots_feature,
+                   fun = mean,
+                   df = TRUE)
+names(pre_mean)[names(pre_mean) == "FL016_georef"] <- "FL016"
+
+
+post_mean2<- extract(FL020b, plots_feature,
+                    fun = mean,
+                    df = TRUE)
+names(post_mean)[names(post_mean) == "FL020_goeref"] <- "FL020"
+
+plots_feature <- as.data.frame(plots_feature)
+plots_feature$ID <- c(1:23)
+plots = plots_feature %>% select(plot_num, ID)
+
+
+pre_mean2 <- merge (pre_mean2, plots, by = "ID")
+post_mean2 <- merge (post_mean2, plots, by = "ID")
+
+
+treatments <- read.csv("treatments.csv")
+treatments 
+treatments$plot = gsub("P", "", treatments$plot)
+names(treatments)[names(treatments) == "plot"] <- "plot_num"
+
+
+pre_mean2 <- merge(pre_mean2, treatments, by = "plot_num")
+post_mean2 <- merge(post_mean2, treatments, by = "plot_num")
+
+all_mean_b <- merge(pre_mean2, post_mean2, by = "plot_num")
+all_pt_int2 <-merge(all_mean_b, pt_int, by = "plot_num")
+
+all_pt_int$ndvi_diff <- all_pt_int$FL016 - all_pt_int$FL020
 
 
 
