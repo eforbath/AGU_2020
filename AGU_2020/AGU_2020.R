@@ -252,9 +252,13 @@ ggplot(df, aes(x=treatment.x, y=value, fill=variable)) +
                  breaks=c("FL016", "FL020"),
                  labels=c("Pre-Clipping", "Post-Clipping")) 
 
-aov <- aov(FL016 ~  FL020 + treatment.x, data = all_mean)
+
+aov <- aov(value ~  variable + treatment.x, data = df)
 summary(aov)
 aov
+
+
+
 
 aov <- aov(FL016 ~ treatment.x, data = all_mean) ##not different
 summary(aov)
@@ -263,6 +267,11 @@ TukeyHSD(aov)
 aov <- aov(FL020 ~ treatment.x, data = all_mean) ## some different
 summary(aov)
 TukeyHSD(aov)
+
+
+# linear model
+
+
 
 
 ##### subset for all treatments ####
@@ -663,21 +672,30 @@ for (i in 1:length(FL016_new)) { # for every column in the "new" data frame
 }
 
 
+
+
 ##### NORMALIZING NDVI MAPS #####
-norm <- FL016 - 0.15
+diff_extract <- extract(diff, )
+
+diff
+
+cellStats(diff, stat = 'mean')
+# [1] 0.03505925
+
+norm <- FL020 - 0.03505925
 plot(norm)
+plot(FL016)
 
-
-pre_mean2<- extract(norm, plots_feature,
+pre_mean2<- extract(FL016, plots_feature,
                    fun = mean,
                    df = TRUE)
-names(pre_mean)[names(pre_mean) == "FL016_georef"] <- "FL016"
+names(pre_mean2)[names(pre_mean2) == "FL016_georef"] <- "FL016"
 
 
-post_mean2<- extract(FL020b, plots_feature,
+post_mean2<- extract(norm, plots_feature,
                     fun = mean,
                     df = TRUE)
-names(post_mean)[names(post_mean) == "FL020_goeref"] <- "FL020"
+names(post_mean2)[names(post_mean2) == "FL020_goeref"] <- "FL020"
 
 plots_feature <- as.data.frame(plots_feature)
 plots_feature$ID <- c(1:23)
@@ -700,8 +718,42 @@ post_mean2 <- merge(post_mean2, treatments, by = "plot_num")
 all_mean_b <- merge(pre_mean2, post_mean2, by = "plot_num")
 all_pt_int2 <-merge(all_mean_b, pt_int, by = "plot_num")
 
-all_pt_int$ndvi_diff <- all_pt_int$FL016 - all_pt_int$FL020
+all_pt_int2$ndvi_diff <- all_pt_int2$FL016 - all_pt_int2$FL020
 
+###### box plot #####
+library(reshape2)
+all_mean_b <- subset(all_mean_b, select= -c(ID.y, ID.x, treatment.y, plot_num))
+df2 <- melt(all_mean_b, id.vars='treatment.x')
+
+cdata2 <- ddply(df2, c("treatment.x", "variable"), summarise,
+               N    = length(value),
+               mean = mean(value),
+               sd   = sd(value),
+               se   = sd / sqrt(N)
+)
+
+
+##### BOXPLOT #####
+ggplot(df2, aes(x=treatment.x, y=value, fill=variable)) + 
+  geom_boxplot() +
+  xlab("Treatment") +
+  ylab("NDVI")+
+  scale_x_discrete(labels= c("Control", "Grass", "Grass + Shrub", "Shrub")) + 
+  ggtitle("NDVI pre- and post- clipping") +
+  scale_fill_manual(values=c("#CC6666", "#9999CC"),
+                    name="Variable", # Legend label, use darker colors
+                    breaks=c("FL016", "FL020"),
+                    labels=c("Pre-Clipping", "Post-Clipping")) 
+
+
+aov <- aov(value ~  variable + treatment.x, data = df)
+summary(aov)
+aov
+
+install.packages("nlme")
+library(nlme)
+
+lme = lme(value ~ variable+treatment.x, data = df2)
 
 
 
