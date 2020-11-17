@@ -46,7 +46,12 @@ FL020
 
 FL020_crop <- crop(FL020, FL016)
 FL020b<- resample(FL020_crop, FL016)
-diff <- FL020 - FL016
+diff <- FL020b - FL016
+
+plot(diff, 
+     xlab = "longitude", 
+     ylab = "latitude", 
+     main = "NDVI difference")
 
 RGB <- stack("RU_CYN_TR1_FL016_RGB.tif")
 RGB
@@ -480,6 +485,7 @@ ggplot(ndvi_br, aes(x=treatment.x, y=ndvi_diff, fill=treatment.x)) +
 aov <- aov(ndvi_diff ~ treatment.x, data = ndvi_br)
 summary(aov)
 TukeyHSD(aov)
+
 
 
 ##### scatter plot (need this?) #####
