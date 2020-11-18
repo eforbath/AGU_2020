@@ -752,9 +752,20 @@ install.packages("lme4")
 library(lme4)
 
 
-lme = lme(value ~ variable + treatment.x, data = df2, 
+lme = lme(value ~  variable * treatment.x, data = df2, 
           random = ~1|variable)
 summary(lme)
+ ## OR
+lme2 = lme(FL016 ~  FL020 * treatment.x, data = all_mean_b, 
+          random = ~1|treatment.x)
+summary(lme2)
+
+## checking residuals 
+df2$res = residuals(lme, type = "pearson")
+plot(lme)
+qplot(variable, res, geom = "boxplot", data = df2) 
+qplot(treatment.x, res, geom = "boxplot", data = df2)
+
 
 
 ##### boxoplt for NDVI diff #####
