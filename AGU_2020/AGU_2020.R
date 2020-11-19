@@ -486,7 +486,7 @@ ggplot(ndvi_br, aes(x=treatment.x, y=ndvi_diff, fill=treatment.x)) +
   ylab("NDVI Difference")+
   ggtitle("") +
   scale_fill_manual(values=c("#CC6666", "#9999CC", "#66CC99"),
-                    name="Treatmeents", # Legend label, use darker colors
+                    name="Treatments", # Legend label, use darker colors
                     breaks=c(),
                     labels=c())
    
@@ -675,9 +675,6 @@ for (i in 1:length(FL016_new)) { # for every column in the "new" data frame
 
 
 ##### NORMALIZING NDVI MAPS #####
-diff_extract <- extract(diff, )
-
-diff
 
 cellStats(diff, stat = 'mean')
 # [1] 0.03505925
@@ -722,8 +719,8 @@ all_pt_int2$ndvi_diff <- all_pt_int2$FL020 - all_pt_int2$FL016
 
 ###### box plot #####
 library(reshape2)
-all_mean_b <- subset(all_mean_b, select= -c(ID.y, ID.x, treatment.y, plot_num))
-df2 <- melt(all_mean_b, id.vars='treatment.x')
+all_mean_b <- subset(all_mean_b, select= -c(ID.y, ID.x, treatment.y))
+df2 <- melt(all_mean_b, id.vars=c('treatment.x', 'plot_num'))
 
 cdata2 <- ddply(df2, c("treatment.x", "variable"), summarise,
                N    = length(value),
@@ -752,13 +749,60 @@ install.packages("lme4")
 library(lme4)
 
 
+df2 = mutate(df2, transunique = paste(plot_num, treatment.x, sep = ".") )
+
 lme = lme(value ~  variable * treatment.x, data = df2, 
-          random = ~1|variable)
+          random = ~1|transunique)
 summary(lme)
- ## OR
-lme2 = lme(FL016 ~  FL020 * treatment.x, data = all_mean_b, 
-          random = ~1|treatment.x)
-summary(lme2)
+
+install.packages("gmodels")
+library(gmodels)
+
+precon = c(1, 0, 0, 0, 0, 0, 0, 0)
+postcon = c(1, 1, 0, 0, 0, 0, 0, 0)
+pregr = c(1, 0, 1, 0, 0, 0, 0, 0)
+pregrsh = c(1, 0, 0, 1, 0, 0, 0, 0)
+presh = c(1, 0, 0, 0, 1, 0, 0, 0)
+postgr = c(1, 1, 1, 0, 0, 1, 0, 0)
+postgrsh = c(1, 1, 0, 1, 0, 0, 1, 0)
+postsh = c(1, 1, 0, 0, 1, 0, 0, 1)
+
+precon_postcon = postcon - precon
+pregr_postgr = postgr - pregr
+pregrsh_postgrsh = postgrsh - pregrsh
+presh_postsh = postsh - presh
+
+1 - .05/4
+# [1] 0.9875
+
+(mm = estimable(lme, rbind(precon_postcon, pregr_postgr, pregrsh_postgrsh, presh_postsh),
+                conf.int = .9875))
+
+NBvB1 = (NB1 + NB2 + NB3)/3 - B1
+
+(nbdiff = estimable(gen, rbind(NBvB1), conf.int = .983) )
+
+
+
+mm$group = c("pre and post control", "pre and post grass", 
+             "pre and post grass + shrub ", "pre and post shrub")
+
+
+ggplot(mm, aes(x = group, y = Estimate) ) + # Set axes for graph 
+  geom_errorbar(width = .15, lwd=.75, aes(ymin=Lower.CI, ymax=Upper.CI) ) + # Add error bar 
+  geom_point(size=3) + # Add points for means
+  ylab("NDVI change") + xlab("") + # Change x and y labels
+  theme_bw() + # change graph to black and white
+  theme(panel.grid.major = element_blank() ) + # remove gridlines
+  geom_hline(yintercept = 0, colour = "grey34", lty = 2) +
+  # horizontal line at 0 for no statistical difference
+  geom_rect(xmin = 0, xmax = 5, ymin = -.4, ymax = .4, alpha = .1) +
+  # difference at .4 m indicates no practical difference
+  ylim(-.5, .5) 
+
+
+
+
 
 ## checking residuals 
 df2$res = residuals(lme, type = "pearson")
@@ -785,11 +829,79 @@ ggplot(all_pt_int2, aes(x=treatment.x, y=ndvi_diff)) +
   ggtitle("") +
   geom_point()
 
-subset <- subset(all_pt_int2, treatment.x == "GR"|treatment.x == "GS"|treatment.x == "SH" )
-
-aov <- aov(ndvi_diff ~ treatment.x, data = subset)
+### ANOVA of NDVI diff between treatments
+aov <- aov(ndvi_diff ~ treatment.x, data = all_pt_int2)
 summary(aov)
 TukeyHSD(aov)
+
+
+ndvi_br <- na.omit(merge(all_mean, bio_removal2, by = c("plot_num"), all.x = TRUE, all.y = TRUE)) 
+##
+
+## percent cover and ndvi
+all_pt_int2 = mutate(all_pt_int2, transunique = paste(plot_num, functional_groups, sep = ".") )
+lme = lme(FL016 ~ percent_composition * functional_groups, data = all_pt_int2, 
+          random = ~1|transunique)
+summary(lme)
+
+
+#### biomass and NDVI ####
+## biomass removal by treatment ##
+GR <- subset(all_pt_int2, treatment.x == "GR")
+SH <- subset(all_pt_int2, treatment.x == "SH")
+GS <- subset(all_pt_int2, treatment.x == "GS")
+
+lm<- lm(bio_removed ~ ndvi_diff, data = GR)
+summary(lm)
+
+
+lm<- lm(bio_removed ~ ndvi_diff, data = SH)
+summary(lm)
+
+
+lm<- lm(bio_removed ~ ndvi_diff, data = GS)
+summary(lm)
+
+## plot of biomass removed vs ndvi by treatmend (colored) ##
+plot(bio_removed ~ ndvi_diff, 
+     data = GR,
+     xlim = c(-0.2, 0.2),
+     ylim = c(0, 500),
+     xlab = "NDVI Difference", 
+     ylab = "Biomass Removed (g)", 
+     main = "NDVI Difference vs Biomass Removed", 
+     pch = 19, 
+     col = "green")
+points(bio_removed ~ ndvi_diff, 
+       data = SH, 
+       pch = 19, 
+       col = "red")
+points(bio_removed ~ ndvi_diff, 
+       data = GS, 
+       pch = 19, 
+       col = "purple")
+legend("topleft", c("grass removed", "shrub removed", "grass & shrub removed"),
+       fill = c("green", "red", "purple"))
+
+## boxplot with pre NDVI and biomass
+ggplot(all_pt_int2, aes(x=treatment.x, y=bio_removed.x)) + 
+  geom_boxplot() +
+  xlab("Treatment") +
+  ylab("Biomass Removed")+
+  scale_x_discrete(labels= c( "Grass", "Grass + Shrub", "Shrub")) + 
+  ggtitle("NDVI pre- and post- clipping") 
+
+## boxplot with NDVI for each group
+# groups 
+  # 105 = hgih DESH (> 50%)
+  # 129 = high GRAM (> 50%...73%)
+  # 
+
+
+all_pt_int2 <- subset(all_pt_int2,select= -c(ID.y, ID.x, treatment.y, bio_removed.x) )
+
+
+
 
 
 
