@@ -1,0 +1,112 @@
+---
+title: "AGU_2020_markdown"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Set Working Directory
+````{r setup}
+knitr::opts_knit$set(root.dir = '/Users/elenaforbath/Downloads/loranty_lab/CYN_plant_comp_data')
+````
+
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+## Install Packages 
+````{r include = TRUE }
+install.packages("dplyr")
+install.packages("ggplot2")
+install.packages("tiff")
+install.packages("rtiff")
+install.packages("raster") 
+install.packages("sp")
+install.packages("rgdal")
+install.packages("tidyr")
+install.packages("stringr")
+install.packages("lme4")
+install.packages("cowplot")
+install.packages("lsmeans")
+install.packages("DHARMa")
+
+library(tiff)
+library(rtiff)
+library(raster)
+library(sp)
+library(rgdal)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+library(lme4)
+library(cowplot)
+library(lme4)
+library(lsmeans)
+library(DHARMa)
+````
+
+## Create Raster of Sites
+````{r plots include = FALSE }
+FL016 <- raster("georef_rasters/FL016_georef.tif")
+FL020 <- raster("georef_rasters/FL020_goeref.tif")
+````
+
+## Plot Rasters
+````{r echo = FALSE}
+plot(FL016)
+plot(FL020)
+````
+
+
+## Create GPS Points
+````{r gps, include = FALSE}
+GPS <- na.omit(read.csv("CYN_plot_centers.csv"))
+
+GPS2 <- subset(GPS, select= -c(plot, elevation))
+
+GPS_order <- GPS2[,c("longitude", "latitude")]
+
+GPS_order2 <- SpatialPoints(GPS_order,
+                            proj4string = CRS("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"))
+
+CRS.new <- CRS("+proj=aea +lat_1=50 +lat_2=70 +lat_0=56 +lon_0=100 +x_0=0 +y_0=0 +datum=WGS84 +units=m +no_defs +ellps=WGS84 +towgs84=0,0,0")
+
+GPS_final<- spTransform(GPS_order2, CRS.new)
+````
+
+
+##Plot Rasters with New GPS points
+````{r}
+plot(FL016, 
+     main = "Pre-Clipping NDVI", 
+     xlab = "Longitude", 
+     ylab = "Latitude")
+points(GPS_final$longitude, GPS_final$latitude, pch=21,
+       bg = "black", col = "yellow")
+
+
+plot(FL020, 
+     main = "Post-Clipping NDVI", 
+     xlab = "Longitude", 
+     ylab = "Latitude")
+points(GPS_final$longitude, GPS_final$latitude, pch=21,
+       bg = "black", col = "yellow")
+````
+
+## Percent Cover
+````{r }
+
+````
+
+
+
+

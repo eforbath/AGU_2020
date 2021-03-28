@@ -37,6 +37,11 @@ library(lme4)
 library(lsmeans)
 library(DHARMa)
 
+### install R markdown
+
+###
+install.packages("rmarkdown")
+library(rmarkdown)
 ##### raster of site #####
 FL016 <- raster("georef_rasters/FL016_georef.tif")  
 FL016
@@ -736,11 +741,11 @@ ggplot(df2, aes(x=treatment.x, y=value, fill=variable)) +
   xlab("Treatment") +
   ylab("NDVI")+
   scale_x_discrete(labels= c("Control", "Grass", "Grass + Shrub", "Shrub")) + 
-  ggtitle("NDVI pre- and post- clipping") +
+  ggtitle("") +
   scale_fill_manual(values=c("#CC6666", "#9999CC"),
                     name="Variable", # Legend label, use darker colors
                     breaks=c("FL016", "FL020"),
-                    labels=c("Pre-Clipping", "Post-Clipping")) 
+                    labels=c("Pre-Removal", "Post-Removal")) 
 
 
 install.packages("nlme")
@@ -784,8 +789,8 @@ NBvB1 = (NB1 + NB2 + NB3)/3 - B1
 
 
 
-mm$group = c("pre and post control", "pre and post grass", 
-             "pre and post grass + shrub ", "pre and post shrub")
+mm$group = c("Control", "Grass", 
+             "Grass + Shrub ", "Shrub")
 
 
 ggplot(mm, aes(x = group, y = Estimate) ) + # Set axes for graph 
@@ -796,8 +801,7 @@ ggplot(mm, aes(x = group, y = Estimate) ) + # Set axes for graph
   theme(panel.grid.major = element_blank() ) + # remove gridlines
   geom_hline(yintercept = 0, colour = "grey34", lty = 2) +
   # horizontal line at 0 for no statistical difference
-  geom_rect(xmin = 0, xmax = 5, ymin = -.4, ymax = .4, alpha = .1) +
-  # difference at .4 m indicates no practical difference
+    # difference at .4 m indicates no practical difference
   ylim(-.5, .5) 
 
 
@@ -827,16 +831,20 @@ ggplot(all_pt_int2, aes(x=treatment.x, y=ndvi_diff)) +
   xlab("Treatment") +
   ylab("NDVI Difference")+
   ggtitle("") +
-  geom_point()
+  geom_point() +
+  geom_text(data = aov1, aes(x = treatment.x, y = ndvi_diff, label = Letters_Tukey))
 
 ### ANOVA of NDVI diff between treatments
+install.packages("agricolae")
+library(agricolae)
+
 aov <- aov(ndvi_diff ~ treatment.x, data = all_pt_int2)
 summary(aov)
 TukeyHSD(aov)
 
 
-ndvi_br <- na.omit(merge(all_mean, bio_removal2, by = c("plot_num"), all.x = TRUE, all.y = TRUE)) 
 ##
+
 
 ## percent cover and ndvi
 all_pt_int2 = mutate(all_pt_int2, transunique = paste(plot_num, functional_groups, sep = ".") )
@@ -844,9 +852,41 @@ lme = lme(FL016 ~ percent_composition * functional_groups, data = all_pt_int2,
           random = ~1|transunique)
 summary(lme)
 
+##new dataframe with shrub vs non-shrub ndvi 
+plot_num <- c(102, 103, 105, 106, 107, 108, 109, 110, 112, 114, 115, 116, 117, 118, 121, 123, 124, 125, 128, 129, 135, 138, 139)
+shrub_nonshrub <- c("ns", "s", "s", "ns", "ns", "ns", "s","ns", "s", "s", "s", "ns", "s", "ns", "ns", "ns", "ns", "ns", "s", "ns", "s", "ns", "ns" )
+groups <- data.frame(plot_num, shrub_nonshrub)
+group <- merge(groups, all_mean_b, by = "plot_num", all.x = TRUE, all.y = TRUE)
+
+ggplot(group, aes(x=shrub_nonshrub, y=FL016)) + 
+  geom_boxplot() +
+  xlab("") +
+  ylab("Pre-removal NDVI")+
+  scale_x_discrete(labels= c( "Shrub", "Non-Shrub")) + 
+  ggtitle("") 
+
+ttest <- t.test(FL016 ~ shrub_nonshrub, data = group)
+ttest
+
+
 
 #### biomass and NDVI ####
 ## biomass removal by treatment ##
+
+bio_removal <- na.omit(read.csv("CYN_bio_removal.csv"))
+names(bio_removal)[names(bio_removal) == "Plot.ID"] <- "plot_num"
+bio_removal2 <- aggregate(bio_removal$BIOMASS..g., by = list(plot=bio_removal$plot_num), FUN = sum)
+names(bio_removal2)[names(bio_removal2) == "x"] <- "bio_removed"
+names(bio_removal2)[names(bio_removal2) == "plot"] <- "plot_num"
+
+
+ndvi_br <- na.omit(merge(all_mean_b, bio_removal2, by = c("plot_num"), all.x = TRUE, all.y = TRUE)) 
+
+all_pt_int2 <- na.omit(merge(all_pt_int2, bio_removal2, by = c("plot_num"), all.x = TRUE, all.y = TRUE)) 
+all_pt_int2 <- subset(all_pt_int2,select= -c(ID.y, ID.x, treatment.y) )
+
+
+## need this?? ## biomass removal vs ndvi diff
 GR <- subset(all_pt_int2, treatment.x == "GR")
 SH <- subset(all_pt_int2, treatment.x == "SH")
 GS <- subset(all_pt_int2, treatment.x == "GS")
@@ -884,7 +924,7 @@ legend("topleft", c("grass removed", "shrub removed", "grass & shrub removed"),
        fill = c("green", "red", "purple"))
 
 ## boxplot with pre NDVI and biomass
-ggplot(all_pt_int2, aes(x=treatment.x, y=bio_removed.x)) + 
+ggplot(all_pt_int2, aes(x=treatment.x, y=bio_removed)) + 
   geom_boxplot() +
   xlab("Treatment") +
   ylab("Biomass Removed")+
@@ -893,12 +933,12 @@ ggplot(all_pt_int2, aes(x=treatment.x, y=bio_removed.x)) +
 
 ## boxplot with NDVI for each group
 # groups 
-  # 105 = hgih DESH (> 50%)
+  # 105, 109, 114, 115, 128, 135 = high DESH (> 50%)
   # 129 = high GRAM (> 50%...73%)
-  # 
+  # 138 = high EQU (73%)
 
 
-all_pt_int2 <- subset(all_pt_int2,select= -c(ID.y, ID.x, treatment.y, bio_removed.x) )
+
 
 
 
